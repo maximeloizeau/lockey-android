@@ -1,77 +1,101 @@
-package fr.maximeloizeau.lockey;
+package fr.maximeloizeau.lockey.activities.authentication;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
-import android.os.AsyncTask;
-import android.os.Build;
+import android.content.Context;
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
+
+import android.os.AsyncTask;
+
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.HashMap;
 
+import fr.maximeloizeau.lockey.R;
+import fr.maximeloizeau.lockey.activities.tenant.TenantHome;
 import fr.maximeloizeau.lockey.models.User;
 import fr.maximeloizeau.lockey.restInterfaces.LockeyService;
 import retrofit2.Call;
 import retrofit2.GsonConverterFactory;
 import retrofit2.Retrofit;
 
-public class SignUpActivity extends AppCompatActivity {
+/**
+ * A login screen that offers login via email/password.
+ */
+public class LoginActivity extends AppCompatActivity {
 
+    /**
+     * Keep track of the login task to ensure we can cancel it if requested.
+     */
     private UserLoginTask mAuthTask = null;
 
-    private View mRegisterForm;
-    private View mProgressView;
-
-    private EditText mPasswordView;
+    // UI references.
     private EditText mEmailView;
-    private EditText mFirstNameView;
-    private EditText mLastNameView;
+    private EditText mPasswordView;
+    private View mProgressView;
+    private View mLoginFormView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_sign_up);
+        // Ask to remove title bar on this activity
+        //this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
+        setContentView(R.layout.activity_login);
         // Set up the login form.
         mEmailView = (EditText) findViewById(R.id.email);
-        mFirstNameView = (EditText) findViewById(R.id.firstname);
-        mLastNameView = (EditText) findViewById(R.id.lastname);
 
         mPasswordView = (EditText) findViewById(R.id.password);
         mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
                 if (id == R.id.login || id == EditorInfo.IME_NULL) {
-                    attemptRegister();
+                    attemptLogin();
                     return true;
                 }
                 return false;
             }
         });
 
-        Button registrationButton = (Button) findViewById(R.id.register_button);
-        registrationButton.setOnClickListener(new View.OnClickListener() {
+        Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
+        mEmailSignInButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-                attemptRegister();
+                attemptLogin();
             }
         });
 
-        mRegisterForm = findViewById(R.id.register_form);
-        mProgressView = findViewById(R.id.register_progress);
+        Button mGoToRegistrationButton = (Button) findViewById(R.id.go_to_register_button);
+        mGoToRegistrationButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent registerIntent = new Intent(LoginActivity.this, SignUpActivity.class);
+                startActivity(registerIntent);
+            }
+        });
+
+        mLoginFormView = findViewById(R.id.login_form);
+        mProgressView = findViewById(R.id.login_progress);
     }
 
-    private void attemptRegister() {
+    /**
+     * Attempts to sign in or register the account specified by the login form.
+     * If there are form errors (invalid email, missing fields, etc.), the
+     * errors are presented and no actual login attempt is made.
+     */
+    private void attemptLogin() {
         if (mAuthTask != null) {
             return;
         }
@@ -79,14 +103,10 @@ public class SignUpActivity extends AppCompatActivity {
         // Reset errors.
         mEmailView.setError(null);
         mPasswordView.setError(null);
-        mFirstNameView.setError(null);
-        mLastNameView.setError(null);
 
         // Store values at the time of the login attempt.
         String email = mEmailView.getText().toString();
         String password = mPasswordView.getText().toString();
-        String firstname = mFirstNameView.getText().toString();
-        String lastname = mLastNameView.getText().toString();
 
         boolean cancel = false;
         View focusView = null;
@@ -109,12 +129,6 @@ public class SignUpActivity extends AppCompatActivity {
             cancel = true;
         }
 
-        if(TextUtils.isEmpty(firstname)) {
-            mFirstNameView.setError(getString(R.string.error_field_required));
-            focusView = mFirstNameView;
-            cancel = true;
-        }
-
         if (cancel) {
             // There was an error; don't attempt login and focus the first
             // form field with an error.
@@ -123,7 +137,7 @@ public class SignUpActivity extends AppCompatActivity {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
-            mAuthTask = new UserLoginTask(email, password, firstname, lastname);
+            mAuthTask = new UserLoginTask(this, email, password);
             mAuthTask.execute((Void) null);
         }
     }
@@ -149,12 +163,12 @@ public class SignUpActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
             int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
 
-            mRegisterForm.setVisibility(show ? View.GONE : View.VISIBLE);
-            mRegisterForm.animate().setDuration(shortAnimTime).alpha(
+            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+            mLoginFormView.animate().setDuration(shortAnimTime).alpha(
                     show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    mRegisterForm.setVisibility(show ? View.GONE : View.VISIBLE);
+                    mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
                 }
             });
 
@@ -170,7 +184,7 @@ public class SignUpActivity extends AppCompatActivity {
             // The ViewPropertyAnimator APIs are not available, so simply show
             // and hide the relevant UI components.
             mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
-            mRegisterForm.setVisibility(show ? View.GONE : View.VISIBLE);
+            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
         }
     }
 
@@ -180,10 +194,14 @@ public class SignUpActivity extends AppCompatActivity {
      */
     public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
 
-        private final User user;
+        private final Context mContext;
+        private final String mEmail;
+        private final String mPassword;
 
-        UserLoginTask(String email, String password, String firstname, String lastname) {
-            this.user = new User(firstname, lastname, email, password);
+        UserLoginTask(Context c, String email, String password) {
+            mContext = c;
+            mEmail = email;
+            mPassword = password;
         }
 
         @Override
@@ -195,10 +213,13 @@ public class SignUpActivity extends AppCompatActivity {
 
             LockeyService service = retrofit.create(LockeyService.class);
 
-            Call<User> registrationCall = service.signUp(this.user);
+            HashMap<String, String> loginInfo = new HashMap<>();
+            loginInfo.put("email", mEmail);
+            loginInfo.put("password", mPassword);
+            Call<User> loginCall = service.login(loginInfo);
 
             try {
-                User loggedUser = registrationCall.execute().body();
+                User loggedUser = loginCall.execute().body();
                 return true;
             } catch (IOException e) {
                 e.printStackTrace();
@@ -212,11 +233,13 @@ public class SignUpActivity extends AppCompatActivity {
             showProgress(false);
 
             if (success) {
-                System.out.println("Registered");
+                Intent tenantHome = new Intent(mContext, TenantHome.class);
+                startActivity(tenantHome);
+
                 finish();
             } else {
-                mEmailView.setError(getString(R.string.email_already_taken));
-                mEmailView.requestFocus();
+                mPasswordView.setError(getString(R.string.error_incorrect_password));
+                mPasswordView.requestFocus();
             }
         }
 
@@ -227,3 +250,4 @@ public class SignUpActivity extends AppCompatActivity {
         }
     }
 }
+

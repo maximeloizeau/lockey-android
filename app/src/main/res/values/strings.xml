@@ -2,7 +2,7 @@
     <string name="app_name">Lockey</string>
     <string name="app_description">The best app to interact about your apartment</string>
 
-    <!-- Strings related to login -->
+    <!-- Strings related to login and registration -->
     <string name="prompt_email">Email</string>
     <string name="prompt_password">Password</string>
     <string name="prompt_firstname">Firstname</string>
@@ -16,4 +16,15 @@
     <string name="error_field_required">This field is required</string>
     <string name="login_or_text">or</string>
     <string name="email_already_taken">Email already in use</string>
+    <string name="title_activity_tenant_home">Home</string>
+
+    <!-- Strings related to tenant's homepage -->
+    <string name="homepage_greetings">Hello %1$s !</string>
+    <string name="homepage_alerts">%1$d alerts</string>
+    <string name="homepage_messages">%1$d new messages</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
 </resources>

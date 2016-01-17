@@ -1,114 +1,81 @@
-package fr.maximeloizeau.lockey;
+package fr.maximeloizeau.lockey.activities.authentication;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AppCompatActivity;
-import android.app.LoaderManager.LoaderCallbacks;
-
-import android.content.CursorLoader;
-import android.content.Loader;
-import android.database.Cursor;
-import android.net.Uri;
 import android.os.AsyncTask;
-
 import android.os.Build;
+import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.View.OnClickListener;
-import android.view.Window;
 import android.view.inputmethod.EditorInfo;
-import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
+import fr.maximeloizeau.lockey.R;
+import fr.maximeloizeau.lockey.activities.tenant.TenantHome;
 import fr.maximeloizeau.lockey.models.User;
 import fr.maximeloizeau.lockey.restInterfaces.LockeyService;
 import retrofit2.Call;
 import retrofit2.GsonConverterFactory;
 import retrofit2.Retrofit;
 
-import static android.Manifest.permission.READ_CONTACTS;
+public class SignUpActivity extends AppCompatActivity {
 
-/**
- * A login screen that offers login via email/password.
- */
-public class LoginActivity extends AppCompatActivity {
-
-    /**
-     * Keep track of the login task to ensure we can cancel it if requested.
-     */
     private UserLoginTask mAuthTask = null;
 
-    // UI references.
-    private EditText mEmailView;
-    private EditText mPasswordView;
+    private View mRegisterForm;
     private View mProgressView;
-    private View mLoginFormView;
+
+    private EditText mPasswordView;
+    private EditText mEmailView;
+    private EditText mFirstNameView;
+    private EditText mLastNameView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Ask to remove title bar on this activity
-        //this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        setContentView(R.layout.activity_sign_up);
 
-        setContentView(R.layout.activity_login);
         // Set up the login form.
         mEmailView = (EditText) findViewById(R.id.email);
+        mFirstNameView = (EditText) findViewById(R.id.firstname);
+        mLastNameView = (EditText) findViewById(R.id.lastname);
 
         mPasswordView = (EditText) findViewById(R.id.password);
         mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
                 if (id == R.id.login || id == EditorInfo.IME_NULL) {
-                    attemptLogin();
+                    attemptRegister();
                     return true;
                 }
                 return false;
             }
         });
 
-        Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
-        mEmailSignInButton.setOnClickListener(new OnClickListener() {
+        Button registrationButton = (Button) findViewById(R.id.register_button);
+        registrationButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                attemptLogin();
+                attemptRegister();
             }
         });
 
-        Button mGoToRegistrationButton = (Button) findViewById(R.id.go_to_register_button);
-        mGoToRegistrationButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent registerIntent = new Intent(LoginActivity.this, SignUpActivity.class);
-                startActivity(registerIntent);
-            }
-        });
-
-        mLoginFormView = findViewById(R.id.login_form);
-        mProgressView = findViewById(R.id.login_progress);
+        mRegisterForm = findViewById(R.id.register_form);
+        mProgressView = findViewById(R.id.register_progress);
     }
 
-    /**
-     * Attempts to sign in or register the account specified by the login form.
-     * If there are form errors (invalid email, missing fields, etc.), the
-     * errors are presented and no actual login attempt is made.
-     */
-    private void attemptLogin() {
+    private void attemptRegister() {
         if (mAuthTask != null) {
             return;
         }
@@ -116,10 +83,14 @@ public class LoginActivity extends AppCompatActivity {
         // Reset errors.
         mEmailView.setError(null);
         mPasswordView.setError(null);
+        mFirstNameView.setError(null);
+        mLastNameView.setError(null);
 
         // Store values at the time of the login attempt.
         String email = mEmailView.getText().toString();
         String password = mPasswordView.getText().toString();
+        String firstname = mFirstNameView.getText().toString();
+        String lastname = mLastNameView.getText().toString();
 
         boolean cancel = false;
         View focusView = null;
@@ -142,6 +113,12 @@ public class LoginActivity extends AppCompatActivity {
             cancel = true;
         }
 
+        if(TextUtils.isEmpty(firstname)) {
+            mFirstNameView.setError(getString(R.string.error_field_required));
+            focusView = mFirstNameView;
+            cancel = true;
+        }
+
         if (cancel) {
             // There was an error; don't attempt login and focus the first
             // form field with an error.
@@ -150,7 +127,7 @@ public class LoginActivity extends AppCompatActivity {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
-            mAuthTask = new UserLoginTask(email, password);
+            mAuthTask = new UserLoginTask(this, email, password, firstname, lastname);
             mAuthTask.execute((Void) null);
         }
     }
@@ -176,12 +153,12 @@ public class LoginActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
             int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
 
-            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
-            mLoginFormView.animate().setDuration(shortAnimTime).alpha(
+            mRegisterForm.setVisibility(show ? View.GONE : View.VISIBLE);
+            mRegisterForm.animate().setDuration(shortAnimTime).alpha(
                     show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+                    mRegisterForm.setVisibility(show ? View.GONE : View.VISIBLE);
                 }
             });
 
@@ -197,7 +174,7 @@ public class LoginActivity extends AppCompatActivity {
             // The ViewPropertyAnimator APIs are not available, so simply show
             // and hide the relevant UI components.
             mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
-            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+            mRegisterForm.setVisibility(show ? View.GONE : View.VISIBLE);
         }
     }
 
@@ -207,12 +184,12 @@ public class LoginActivity extends AppCompatActivity {
      */
     public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
 
-        private final String mEmail;
-        private final String mPassword;
+        private final Context mContext;
+        private final User mUser;
 
-        UserLoginTask(String email, String password) {
-            mEmail = email;
-            mPassword = password;
+        UserLoginTask(Context c, String email, String password, String firstname, String lastname) {
+            this.mContext = c;
+            this.mUser = new User(firstname, lastname, email, password);
         }
 
         @Override
@@ -224,13 +201,10 @@ public class LoginActivity extends AppCompatActivity {
 
             LockeyService service = retrofit.create(LockeyService.class);
 
-            HashMap<String, String> loginInfo = new HashMap<>();
-            loginInfo.put("email", mEmail);
-            loginInfo.put("password", mPassword);
-            Call<User> loginCall = service.login(loginInfo);
+            Call<User> registrationCall = service.signUp(this.mUser);
 
             try {
-                User loggedUser = loginCall.execute().body();
+                User loggedUser = registrationCall.execute().body();
                 return true;
             } catch (IOException e) {
                 e.printStackTrace();
@@ -244,10 +218,13 @@ public class LoginActivity extends AppCompatActivity {
             showProgress(false);
 
             if (success) {
+                Intent tenantHome = new Intent(mContext, TenantHome.class);
+                startActivity(tenantHome);
+
                 finish();
             } else {
-                mPasswordView.setError(getString(R.string.error_incorrect_password));
-                mPasswordView.requestFocus();
+                mEmailView.setError(getString(R.string.email_already_taken));
+                mEmailView.requestFocus();
             }
         }
 
@@ -258,4 +235,3 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 }
-
